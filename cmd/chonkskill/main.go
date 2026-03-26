@@ -9,6 +9,7 @@ import (
 
 	"github.com/iconidentify/chonkskill/pkg/mcprunner"
 	"github.com/iconidentify/chonkskill/pkg/skill"
+	"github.com/iconidentify/chonkskill/skills/drakekb"
 	"github.com/iconidentify/chonkskill/skills/fredmeyer"
 	"github.com/joho/godotenv"
 )
@@ -18,6 +19,9 @@ import (
 var catalog = map[string]func() (*skill.Skill, error){
 	"fredmeyer": func() (*skill.Skill, error) {
 		return fredmeyer.New(fredmeyer.ConfigFromEnv())
+	},
+	"drakekb": func() (*skill.Skill, error) {
+		return drakekb.New(drakekb.ConfigFromEnv())
 	},
 }
 
