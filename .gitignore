@@ -1,0 +1,8 @@
+.env
+*.json
+!go.mod
+!go.sum
+kroger_token_*.json
+kroger_cart.json
+kroger_order_history.json
+kroger_preferences.json
