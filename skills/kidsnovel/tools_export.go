@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/iconidentify/chonkskill/pkg/skill"
 	"github.com/iconidentify/chonkskill/pkg/anthropic"
-	"github.com/iconidentify/chonkskill/pkg/falai"
+	"github.com/iconidentify/chonkskill/pkg/imagegen"
 	"github.com/iconidentify/chonkskill/pkg/project"
+	"github.com/iconidentify/chonkskill/pkg/skill"
 	"github.com/iconidentify/chonkskill/skills/kidsnovel/internal/readability"
 )
 
@@ -77,8 +77,8 @@ func registerExportTools(s *skill.Skill, rt *runtime) {
 	skill.AddTool(s, "gen_illustration",
 		"Generate an illustration for a chapter or the book cover using fal.ai. Style options: cartoon, watercolor, pencil, comic, whimsical. Omit chapter for cover art.",
 		func(ctx context.Context, args GenIllustrationArgs) (string, error) {
-			if rt.falClient == nil {
-				return "", fmt.Errorf("FAL_KEY is required for illustration generation")
+			if rt.imageClient == nil {
+				return "", fmt.Errorf("image_model is required for illustration generation")
 			}
 			p := project.New(args.ProjectDir)
 			grade := loadGrade(p)
@@ -91,7 +91,7 @@ func registerExportTools(s *skill.Skill, rt *runtime) {
 
 			var artPrompt string
 			var destPath string
-			var resolution, aspectRatio string
+			var resolution string
 
 			if args.Chapter > 0 {
 				// Chapter illustration.
@@ -129,7 +129,6 @@ Keep it to 2-3 sentences.`, truncate(text, 4000), spec.Grade+5, spec.Grade+8)
 					style, resp.Text, spec.Grade+5, spec.Grade+8)
 				destPath = filepath.Join(p.Dir, fmt.Sprintf("art/ch%02d.png", args.Chapter))
 				resolution = "1024x1024"
-				aspectRatio = "1:1"
 			} else {
 				// Cover art.
 				seed, _ := p.Seed()
@@ -137,13 +136,11 @@ Keep it to 2-3 sentences.`, truncate(text, 4000), spec.Grade+5, spec.Grade+8)
 					style, truncate(seed, 500), spec.Grade+5, spec.Grade+8)
 				destPath = filepath.Join(p.Dir, "art/cover.png")
 				resolution = "1024x1536"
-				aspectRatio = "2:3"
 			}
 
-			result, err := rt.falClient.Generate(falai.GenerateParams{
-				Prompt:      artPrompt,
-				Resolution:  resolution,
-				AspectRatio: aspectRatio,
+			result, err := rt.imageClient.Generate(imagegen.GenerateParams{
+				Prompt: artPrompt,
+				Size:   resolution,
 			})
 			if err != nil {
 				return "", fmt.Errorf("generation failed: %w", err)
@@ -153,7 +150,7 @@ Keep it to 2-3 sentences.`, truncate(text, 4000), spec.Grade+5, spec.Grade+8)
 				return "", fmt.Errorf("no image URL in response")
 			}
 
-			bytes, err := rt.falClient.DownloadImage(result.ImageURL, destPath)
+			bytes, err := imagegen.DownloadImage(result.ImageURL, destPath)
 			if err != nil {
 				return "", fmt.Errorf("download failed: %w", err)
 			}

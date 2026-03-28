@@ -15,9 +15,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/iconidentify/chonkskill/pkg/skill"
 	"github.com/iconidentify/chonkskill/pkg/anthropic"
-	"github.com/iconidentify/chonkskill/pkg/falai"
+	"github.com/iconidentify/chonkskill/pkg/imagegen"
+	"github.com/iconidentify/chonkskill/pkg/skill"
 )
 
 //go:embed skill.md
@@ -51,19 +51,11 @@ var Schema = skill.ConfigSchema{
 		{
 			Name:        "image_model",
 			Label:       "Image Model",
-			Description: "Model for image generation via LiteLLM (optional, for future use)",
+			Description: "Model for illustration generation (routed through LiteLLM -- e.g. gemini-2.0-flash-preview-image-generation, dall-e-3, flux-pro)",
 			Type:        skill.FieldString,
 			Scope:       skill.ScopeGlobal,
+			Default:     imagegen.DefaultImageModel,
 			EnvVar:      "KIDSNOVEL_IMAGE_MODEL",
-		},
-		{
-			Name:        "fal_key",
-			Label:       "fal.ai API Key",
-			Description: "API key for fal.ai illustration generation",
-			Type:        skill.FieldString,
-			Scope:       skill.ScopeGlobal,
-			Secret:      true,
-			EnvVar:      "FAL_KEY",
 		},
 	},
 }
@@ -89,8 +81,6 @@ type Config struct {
 	JudgeModel  string
 	ImageModel  string
 
-	// Direct API key for fal.ai.
-	FalKey string
 }
 
 // ConfigFromEnv loads configuration from environment variables.
@@ -100,8 +90,7 @@ func ConfigFromEnv() Config {
 		LLMAPIKey:   os.Getenv("LITELLM_KEY"),
 		WriterModel: envDefault("KIDSNOVEL_WRITER_MODEL", anthropic.DefaultWriter),
 		JudgeModel:  envDefault("KIDSNOVEL_JUDGE_MODEL", anthropic.DefaultJudge),
-		ImageModel:  os.Getenv("KIDSNOVEL_IMAGE_MODEL"),
-		FalKey:      os.Getenv("FAL_KEY"),
+		ImageModel: envDefault("KIDSNOVEL_IMAGE_MODEL", imagegen.DefaultImageModel),
 	}
 }
 
@@ -115,7 +104,7 @@ func envDefault(key, def string) string {
 // runtime holds the initialized clients shared across all tool handlers.
 type runtime struct {
 	client      *anthropic.Client
-	falClient   *falai.Client
+	imageClient *imagegen.Client
 	writerModel string
 	judgeModel  string
 }
@@ -132,8 +121,8 @@ func New(cfg Config) (*skill.Skill, error) {
 		judgeModel:  cfg.JudgeModel,
 	}
 
-	if cfg.FalKey != "" {
-		rt.falClient = falai.NewClient(cfg.FalKey)
+	if cfg.ImageModel != "" {
+		rt.imageClient = imagegen.NewClient(cfg.LLMAPIKey, cfg.LLMBaseURL, cfg.ImageModel)
 	}
 
 	s := skill.New(Def)

@@ -6,18 +6,18 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/iconidentify/chonkskill/pkg/skill"
 	"github.com/iconidentify/chonkskill/pkg/anthropic"
-	"github.com/iconidentify/chonkskill/pkg/falai"
+	"github.com/iconidentify/chonkskill/pkg/imagegen"
 	"github.com/iconidentify/chonkskill/pkg/project"
+	"github.com/iconidentify/chonkskill/pkg/skill"
 )
 
 func registerArtTools(s *skill.Skill, rt *runtime) {
 	skill.AddTool(s, "gen_art_style",
 		"Derive a visual style from the novel's world and voice. Saves art/visual_style.json with art style, color palette, texture, mood, reference artists, and concepts for cover/ornament/map/scene-break.",
 		func(ctx context.Context, args GenArtStyleArgs) (string, error) {
-			if rt.falClient == nil {
-				return "", fmt.Errorf("FAL_KEY is required for art generation")
+			if rt.imageClient == nil {
+				return "", fmt.Errorf("image_model is required for art generation")
 			}
 			p := project.New(args.ProjectDir)
 
@@ -70,10 +70,10 @@ Return a JSON object:
 		})
 
 	skill.AddTool(s, "gen_art",
-		"Generate art assets using fal.ai. Supports cover, ornament (per-chapter), map, and scene_break types. Uses the visual style from gen_art_style if available.",
+		"Generate art assets via LiteLLM image generation. Supports cover, ornament (per-chapter), map, and scene_break types. Uses the visual style from gen_art_style if available.",
 		func(ctx context.Context, args GenArtArgs) (string, error) {
-			if rt.falClient == nil {
-				return "", fmt.Errorf("FAL_KEY is required for art generation")
+			if rt.imageClient == nil {
+				return "", fmt.Errorf("image_model is required for art generation")
 			}
 			p := project.New(args.ProjectDir)
 
@@ -89,48 +89,40 @@ Return a JSON object:
 				prompt = buildArtPrompt(args.ArtType, args.Chapter, style)
 			}
 
-			var resolution, aspectRatio string
+			var size string
 			switch args.ArtType {
 			case "cover":
-				resolution = "1024x1536"
-				aspectRatio = "2:3"
+				size = "1024x1536"
 			case "ornament", "scene_break":
-				resolution = "512x512"
-				aspectRatio = "1:1"
+				size = "512x512"
 			case "map":
-				resolution = "1536x1024"
-				aspectRatio = "3:2"
+				size = "1536x1024"
 			default:
 				return "", fmt.Errorf("unknown art_type: %s (use cover, ornament, map, scene_break)", args.ArtType)
 			}
 
-			result, err := rt.falClient.Generate(falai.GenerateParams{
-				Prompt:      prompt,
-				Resolution:  resolution,
-				AspectRatio: aspectRatio,
+			result, err := rt.imageClient.Generate(imagegen.GenerateParams{
+				Prompt: prompt,
+				Size:   size,
 			})
 			if err != nil {
 				return "", fmt.Errorf("generation failed: %w", err)
-			}
-
-			if result.ImageURL == "" {
-				return "", fmt.Errorf("no image URL in response")
 			}
 
 			// Download the image.
 			var destPath string
 			switch args.ArtType {
 			case "cover":
-				destPath = p.Dir + "/art/cover.png"
+				destPath = filepath.Join(p.Dir, "art/cover.png")
 			case "ornament":
-				destPath = p.Dir + fmt.Sprintf("/art/ornament_ch%02d.png", args.Chapter)
+				destPath = filepath.Join(p.Dir, fmt.Sprintf("art/ornament_ch%02d.png", args.Chapter))
 			case "map":
-				destPath = p.Dir + "/art/map.png"
+				destPath = filepath.Join(p.Dir, "art/map.png")
 			case "scene_break":
-				destPath = p.Dir + "/art/scene_break.png"
+				destPath = filepath.Join(p.Dir, "art/scene_break.png")
 			}
 
-			bytes, err := rt.falClient.DownloadImage(result.ImageURL, destPath)
+			bytes, err := imagegen.DownloadImage(result.ImageURL, destPath)
 			if err != nil {
 				return "", fmt.Errorf("download failed: %w", err)
 			}
@@ -141,7 +133,7 @@ Return a JSON object:
 }
 
 func buildArtPrompt(artType string, chapter int, style map[string]any) string {
-	artStyle := extractString(style, "art_style")
+	artStyle := extractStyleStr(style, "art_style")
 	palette := ""
 	if colors, ok := style["color_palette"].([]any); ok {
 		var strs []string
@@ -150,28 +142,30 @@ func buildArtPrompt(artType string, chapter int, style map[string]any) string {
 				strs = append(strs, s)
 			}
 		}
-		palette = fmt.Sprintf(", color palette: %s", join(strs))
+		if len(strs) > 0 {
+			palette = ", color palette: " + joinStrs(strs)
+		}
 	}
-	mood := extractString(style, "mood")
+	mood := extractStyleStr(style, "mood")
 
 	switch artType {
 	case "cover":
-		concept := extractString(style, "cover_concept")
+		concept := extractStyleStr(style, "cover_concept")
 		return fmt.Sprintf("Book cover, %s style, %s%s, %s, no text, high detail, dramatic lighting", artStyle, concept, palette, mood)
 	case "ornament":
-		concept := extractString(style, "ornament_concept")
+		concept := extractStyleStr(style, "ornament_concept")
 		return fmt.Sprintf("Chapter ornament for chapter %d, %s style, %s%s, black and white, decorative, symmetrical", chapter, artStyle, concept, palette)
 	case "map":
-		concept := extractString(style, "map_concept")
+		concept := extractStyleStr(style, "map_concept")
 		return fmt.Sprintf("Fantasy world map, %s style, %s%s, parchment texture, labeled regions, compass rose", artStyle, concept, palette)
 	case "scene_break":
-		concept := extractString(style, "scene_break_concept")
+		concept := extractStyleStr(style, "scene_break_concept")
 		return fmt.Sprintf("Scene break decoration, %s style, %s%s, small, centered, minimal", artStyle, concept, palette)
 	}
 	return "fantasy art"
 }
 
-func extractString(m map[string]any, key string) string {
+func extractStyleStr(m map[string]any, key string) string {
 	if m == nil {
 		return ""
 	}
@@ -183,7 +177,7 @@ func extractString(m map[string]any, key string) string {
 	return ""
 }
 
-func join(strs []string) string {
+func joinStrs(strs []string) string {
 	result := ""
 	for i, s := range strs {
 		if i > 0 {

@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/iconidentify/chonkskill/pkg/skill"
 	"github.com/iconidentify/chonkskill/pkg/anthropic"
+	"github.com/iconidentify/chonkskill/pkg/imagegen"
+	"github.com/iconidentify/chonkskill/pkg/skill"
 	"github.com/iconidentify/chonkskill/skills/autonovel/internal/elevenlabs"
-	"github.com/iconidentify/chonkskill/pkg/falai"
 )
 
 //go:embed skill.md
@@ -58,19 +58,11 @@ var Schema = skill.ConfigSchema{
 		{
 			Name:        "image_model",
 			Label:       "Image Model",
-			Description: "Model for image generation via LiteLLM (optional, for future use)",
+			Description: "Model for image generation (routed through LiteLLM -- e.g. gemini-2.0-flash-preview-image-generation, dall-e-3, flux-pro)",
 			Type:        skill.FieldString,
 			Scope:       skill.ScopeGlobal,
+			Default:     imagegen.DefaultImageModel,
 			EnvVar:      "AUTONOVEL_IMAGE_MODEL",
-		},
-		{
-			Name:        "fal_key",
-			Label:       "fal.ai API Key",
-			Description: "API key for fal.ai image generation (cover art, ornaments)",
-			Type:        skill.FieldString,
-			Scope:       skill.ScopeGlobal,
-			Secret:      true,
-			EnvVar:      "FAL_KEY",
 		},
 		{
 			Name:        "elevenlabs_key",
@@ -106,8 +98,7 @@ type Config struct {
 	ReviewModel string
 	ImageModel  string
 
-	// Direct API keys for non-LLM services.
-	FalKey        string
+	// Direct API key for ElevenLabs (audiobook only).
 	ElevenLabsKey string
 }
 
@@ -119,8 +110,7 @@ func ConfigFromEnv() Config {
 		WriterModel:   envDefault("AUTONOVEL_WRITER_MODEL", anthropic.DefaultWriter),
 		JudgeModel:    envDefault("AUTONOVEL_JUDGE_MODEL", anthropic.DefaultJudge),
 		ReviewModel:   envDefault("AUTONOVEL_REVIEW_MODEL", anthropic.DefaultReview),
-		ImageModel:    os.Getenv("AUTONOVEL_IMAGE_MODEL"),
-		FalKey:        os.Getenv("FAL_KEY"),
+		ImageModel:    envDefault("AUTONOVEL_IMAGE_MODEL", imagegen.DefaultImageModel),
 		ElevenLabsKey: os.Getenv("ELEVENLABS_API_KEY"),
 	}
 }
@@ -135,7 +125,7 @@ func envDefault(key, def string) string {
 // runtime holds the initialized clients shared across all tool handlers.
 type runtime struct {
 	client      *anthropic.Client
-	falClient   *falai.Client      // nil if FAL_KEY not set
+	imageClient *imagegen.Client    // nil if image_model not set
 	elClient    *elevenlabs.Client  // nil if ELEVENLABS_API_KEY not set
 	writerModel string
 	judgeModel  string
@@ -155,8 +145,8 @@ func New(cfg Config) (*skill.Skill, error) {
 		reviewModel: cfg.ReviewModel,
 	}
 
-	if cfg.FalKey != "" {
-		rt.falClient = falai.NewClient(cfg.FalKey)
+	if cfg.ImageModel != "" {
+		rt.imageClient = imagegen.NewClient(cfg.LLMAPIKey, cfg.LLMBaseURL, cfg.ImageModel)
 	}
 	if cfg.ElevenLabsKey != "" {
 		rt.elClient = elevenlabs.NewClient(cfg.ElevenLabsKey)
