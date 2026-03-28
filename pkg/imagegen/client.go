@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-const DefaultImageModel = "gemini-2.0-flash-preview-image-generation"
+const DefaultImageModel = "imagen-4"
 
 // Client generates images via LiteLLM's /v1/images/generations endpoint.
 type Client struct {
