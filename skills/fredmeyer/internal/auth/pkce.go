@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -15,9 +16,9 @@ import (
 )
 
 type PKCEParams struct {
-	CodeVerifier  string
-	CodeChallenge string
-	State         string
+	CodeVerifier  string `json:"code_verifier"`
+	CodeChallenge string `json:"code_challenge"`
+	State         string `json:"state"`
 }
 
 type AuthManager struct {
@@ -34,6 +35,7 @@ func NewAuthManager(client *kroger.Client, tokenFile string) *AuthManager {
 		tokenFile: tokenFile,
 	}
 	am.loadToken()
+	am.loadPKCE()
 	return am
 }
 
@@ -59,6 +61,37 @@ func (am *AuthManager) generatePKCE() (*PKCEParams, error) {
 	}, nil
 }
 
+func (am *AuthManager) pkceFile() string {
+	dir := filepath.Dir(am.tokenFile)
+	return filepath.Join(dir, "kroger_pkce_pending.json")
+}
+
+func (am *AuthManager) savePKCE() {
+	if am.pkceParams == nil {
+		os.Remove(am.pkceFile())
+		return
+	}
+	data, err := json.Marshal(am.pkceParams)
+	if err != nil {
+		return
+	}
+	os.WriteFile(am.pkceFile(), data, 0600)
+}
+
+func (am *AuthManager) loadPKCE() {
+	data, err := os.ReadFile(am.pkceFile())
+	if err != nil {
+		return
+	}
+	var params PKCEParams
+	if err := json.Unmarshal(data, &params); err != nil {
+		return
+	}
+	if params.CodeVerifier != "" && params.State != "" {
+		am.pkceParams = &params
+	}
+}
+
 // StartAuth generates PKCE params and returns the authorization URL.
 func (am *AuthManager) StartAuth(scope string) (string, error) {
 	am.mu.Lock()
@@ -69,6 +102,7 @@ func (am *AuthManager) StartAuth(scope string) (string, error) {
 		return "", err
 	}
 	am.pkceParams = pkce
+	am.savePKCE()
 
 	authURL := am.client.AuthorizationURL(scope, pkce.State, pkce.CodeChallenge)
 	return authURL, nil
@@ -107,6 +141,7 @@ func (am *AuthManager) CompleteAuth(redirectURL string) error {
 	}
 
 	am.pkceParams = nil
+	am.savePKCE()
 	return am.saveToken(token)
 }
 
@@ -157,4 +192,6 @@ func (am *AuthManager) IsAuthenticated() bool {
 func (am *AuthManager) ForceReauth() {
 	am.client.SetUserToken(nil)
 	os.Remove(am.tokenFile)
+	am.pkceParams = nil
+	am.savePKCE()
 }
