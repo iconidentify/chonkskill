@@ -16,6 +16,7 @@ import (
 	"github.com/iconidentify/chonkskill/pkg/skill"
 	"github.com/iconidentify/chonkskill/skills/drakekb"
 	"github.com/iconidentify/chonkskill/skills/fredmeyer"
+	"github.com/iconidentify/chonkskill/skills/skillcreator"
 	"github.com/iconidentify/chonkskill/skills/xsearch"
 )
 
@@ -53,6 +54,17 @@ var allSkills = []skillEntry{
 				return err
 			}
 			return s.Register(reg)
+		},
+	},
+	{
+		name: "skillcreator",
+		def: skill.Definition{
+			Name:        "skill-creator",
+			Description: "Create, test, and refine agent skills",
+			Tags:        []string{"skill", "meta", "authoring", "evaluation"},
+		},
+		register: func(reg skill.Registry) error {
+			return skillcreator.Register(reg, skillcreator.Config{})
 		},
 	},
 }
