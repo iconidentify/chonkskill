@@ -21,6 +21,15 @@ var SkillContent string
 //go:embed agent.md
 var AgentContent string
 
+// Def is the skill definition, exported for convention tests and registration.
+var Def = skill.Definition{
+	Name:         "drakekb",
+	Description:  "Drake Software Knowledge Base -- search tax form documentation, screen instructions, EF messages, and Drake Tax guides",
+	SkillContent: SkillContent,
+	AgentContent: AgentContent,
+	Tags:         []string{"tax", "drake", "knowledge-base", "forms", "tax-preparation"},
+}
+
 // Config holds settings for the Drake KB skill. No credentials needed --
 // the KB is publicly accessible.
 type Config struct{}
@@ -34,13 +43,7 @@ func ConfigFromEnv() Config {
 func New(cfg Config) (*skill.Skill, error) {
 	client := drake.NewClient()
 
-	s := skill.New(skill.Definition{
-		Name:         "drakekb",
-		Description:  "Drake Software Knowledge Base -- search tax form documentation, screen instructions, EF messages, and Drake Tax guides",
-		SkillContent: SkillContent,
-		AgentContent: AgentContent,
-		Tags:         []string{"tax", "drake", "knowledge-base", "forms", "tax-preparation"},
-	})
+	s := skill.New(Def)
 
 	// --- Search ---
 	skill.AddTool(s, "search",

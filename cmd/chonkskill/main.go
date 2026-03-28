@@ -11,6 +11,7 @@ import (
 	"github.com/iconidentify/chonkskill/pkg/skill"
 	"github.com/iconidentify/chonkskill/skills/drakekb"
 	"github.com/iconidentify/chonkskill/skills/fredmeyer"
+	"github.com/iconidentify/chonkskill/skills/xsearch"
 	"github.com/joho/godotenv"
 )
 
@@ -22,6 +23,9 @@ var catalog = map[string]func() (*skill.Skill, error){
 	},
 	"drakekb": func() (*skill.Skill, error) {
 		return drakekb.New(drakekb.ConfigFromEnv())
+	},
+	"xsearch": func() (*skill.Skill, error) {
+		return xsearch.New(xsearch.ConfigFromEnv())
 	},
 }
 
@@ -140,12 +144,15 @@ func cmdTest() {
 	}
 
 	name := os.Args[2]
-	if name != "fredmeyer" {
+	switch name {
+	case "fredmeyer":
+		runFredMeyerTest()
+	case "xsearch":
+		runXSearchTest()
+	default:
 		fmt.Fprintf(os.Stderr, "no tests for skill: %s\n", name)
 		os.Exit(1)
 	}
-
-	runFredMeyerTest()
 }
 
 func runFredMeyerTest() {
@@ -222,6 +229,56 @@ func runFredMeyerTest() {
 		os.Exit(1)
 	}
 	fmt.Printf("OK (%s)\n", result)
+
+	fmt.Println("\n=== All tests passed ===")
+}
+
+func runXSearchTest() {
+	fmt.Println("=== X Search Skill - API Test ===")
+	fmt.Println()
+
+	cfg := xsearch.ConfigFromEnv()
+	s, err := xsearch.New(cfg)
+	if err != nil {
+		fmt.Printf("FAILED to create skill: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Skill created: %s (%d tools)\n\n", s.Def.Name, len(s.Tools))
+
+	ctx := context.Background()
+
+	// Test basic search
+	fmt.Print("1. Searching X for 'AI news today'... ")
+	handler := s.Handlers["xsearch:search"]
+	result, err := handler(ctx, map[string]any{"query": "AI news today"})
+	if err != nil {
+		fmt.Printf("FAILED: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("OK (%d bytes)\n", len(result))
+
+	// Test profile search
+	fmt.Print("2. Searching profile @xai... ")
+	handler = s.Handlers["xsearch:profile"]
+	result, err = handler(ctx, map[string]any{"handle": "xai"})
+	if err != nil {
+		fmt.Printf("FAILED: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("OK (%d bytes)\n", len(result))
+
+	// Test filtered search
+	fmt.Print("3. Searching with handle filter... ")
+	handler = s.Handlers["xsearch:search"]
+	result, err = handler(ctx, map[string]any{
+		"query":   "latest announcements",
+		"handles": []any{"openai", "anthropic"},
+	})
+	if err != nil {
+		fmt.Printf("FAILED: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("OK (%d bytes)\n", len(result))
 
 	fmt.Println("\n=== All tests passed ===")
 }

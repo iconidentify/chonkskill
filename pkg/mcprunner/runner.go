@@ -100,3 +100,7 @@ func (r *mcpRegistry) RegisterSkill(name, description, content string, tags []st
 	slog.Info("skill content available", "name", name, "tags", tags)
 	return nil
 }
+
+func (r *mcpRegistry) RegisterConfigSchema(skillName string, schema skill.ConfigSchema) {
+	slog.Info("config schema registered", "skill", skillName, "fields", len(schema.Fields))
+}

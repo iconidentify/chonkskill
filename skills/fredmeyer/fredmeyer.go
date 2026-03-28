@@ -24,6 +24,76 @@ var SkillContent string
 //go:embed agent.md
 var AgentContent string
 
+// Schema declares the config fields for the Fred Meyer skill.
+// Chonkbase reads this to auto-generate settings UI.
+var Schema = skill.ConfigSchema{
+	Fields: []skill.ConfigField{
+		{
+			Name:        "client_id",
+			Label:       "Kroger Client ID",
+			Description: "OAuth2 client ID from the Kroger Developer Portal",
+			Type:        skill.FieldString,
+			Scope:       skill.ScopeGlobal,
+			Required:    true,
+			EnvVar:      "KROGER_CLIENT_ID",
+		},
+		{
+			Name:        "client_secret",
+			Label:       "Kroger Client Secret",
+			Description: "OAuth2 client secret from the Kroger Developer Portal",
+			Type:        skill.FieldString,
+			Scope:       skill.ScopeGlobal,
+			Required:    true,
+			Secret:      true,
+			EnvVar:      "KROGER_CLIENT_SECRET",
+		},
+		{
+			Name:    "redirect_uri",
+			Label:   "OAuth Redirect URI",
+			Type:    skill.FieldString,
+			Scope:   skill.ScopeGlobal,
+			Default: "http://localhost:8000/callback",
+			EnvVar:  "KROGER_REDIRECT_URI",
+		},
+		{
+			Name:    "base_url",
+			Label:   "Kroger API Base URL",
+			Type:    skill.FieldString,
+			Scope:   skill.ScopeGlobal,
+			Default: "https://api.kroger.com/v1",
+			EnvVar:  "KROGER_API_BASE",
+		},
+		{
+			Name:        "zip_code",
+			Label:       "Default ZIP Code",
+			Description: "Your default ZIP code for store searches",
+			Type:        skill.FieldString,
+			Scope:       skill.ScopeUser,
+			EnvVar:      "KROGER_USER_ZIP_CODE",
+		},
+		{
+			Name:        "data_dir",
+			Label:       "Data Directory",
+			Description: "Where to store token and cart state files",
+			Type:        skill.FieldString,
+			Scope:       skill.ScopeGlobal,
+			Default:     ".",
+			EnvVar:      "KROGER_DATA_DIR",
+		},
+	},
+}
+
+// Def is the skill definition, exported so Register() can access it
+// for metadata-only registration when config is missing.
+var Def = skill.Definition{
+	Name:         "fredmeyer",
+	Description:  "Fred Meyer grocery shopping -- search products, manage cart, find stores, compare prices, build lists from recipes",
+	SkillContent: SkillContent,
+	AgentContent: AgentContent,
+	Tags:         []string{"grocery", "shopping", "fredmeyer", "kroger", "cart", "recipes"},
+	Config:       Schema,
+}
+
 // Config holds the credentials and settings for the Fred Meyer skill.
 type Config struct {
 	ClientID     string
@@ -77,13 +147,7 @@ func New(cfg Config) (*skill.Skill, error) {
 	am := auth.NewAuthManager(client, cfg.DataDir+"/kroger_token_user.json")
 	lc := cart.NewLocalCart(cfg.DataDir+"/kroger_cart.json", cfg.DataDir+"/kroger_order_history.json")
 
-	s := skill.New(skill.Definition{
-		Name:         "fredmeyer",
-		Description:  "Fred Meyer grocery shopping -- search products, manage cart, find stores, compare prices, build lists from recipes",
-		SkillContent: SkillContent,
-		AgentContent: AgentContent,
-		Tags:         []string{"grocery", "shopping", "fredmeyer", "kroger", "cart", "recipes"},
-	})
+	s := skill.New(Def)
 
 	registerLocationTools(s, client, lc, cfg.ZipCode)
 	registerProductTools(s, client, lc)
@@ -96,10 +160,13 @@ func New(cfg Config) (*skill.Skill, error) {
 }
 
 // Register is the one-liner for chonkbase integration.
+// If config is incomplete, registers the skill as unconfigured -- schema
+// and content are published so chonkbase can show the config UI, but no
+// tools are active until the required settings are provided.
 func Register(reg skill.Registry, cfg Config) error {
 	s, err := New(cfg)
 	if err != nil {
-		return err
+		return skill.Unconfigured(Def).Register(reg)
 	}
 	return s.Register(reg)
 }

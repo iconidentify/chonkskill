@@ -21,6 +21,7 @@ import (
 type Registry interface {
 	RegisterTool(def ToolDef, handler Handler)
 	RegisterSkill(name, description, content string, tags []string) error
+	RegisterConfigSchema(skillName string, schema ConfigSchema)
 }
 
 // ToolDef describes a tool's name, description, and input schema.
@@ -37,9 +38,10 @@ type Handler func(ctx context.Context, input map[string]any) (string, error)
 type Definition struct {
 	Name         string
 	Description  string
-	SkillContent string   // Full SKILL.md content (go:embed)
-	AgentContent string   // Full agent.md content (go:embed)
+	SkillContent string       // Full SKILL.md content (go:embed)
+	AgentContent string       // Full agent.md content (go:embed)
 	Tags         []string
+	Config       ConfigSchema // Declared config fields (zero value = no config)
 }
 
 // Skill is a named collection of tools with embedded procedural knowledge.
@@ -47,17 +49,23 @@ type Skill struct {
 	Def      Definition
 	Tools    []ToolDef
 	Handlers map[string]Handler
+
+	// Configured is true when the skill has live tool handlers.
+	// False when registered as metadata-only (missing required config).
+	Configured bool
 }
 
 // New creates a new skill with the given definition.
+// Skills created with New are marked as Configured.
 func New(def Definition) *Skill {
 	return &Skill{
-		Def:      def,
-		Handlers: make(map[string]Handler),
+		Def:        def,
+		Handlers:   make(map[string]Handler),
+		Configured: true,
 	}
 }
 
-// Register dumps all tools and the skill content into a registry.
+// Register dumps all tools, skill content, and config schema into a registry.
 func (s *Skill) Register(reg Registry) error {
 	for _, def := range s.Tools {
 		reg.RegisterTool(def, s.Handlers[def.Name])
@@ -67,7 +75,23 @@ func (s *Skill) Register(reg Registry) error {
 			return fmt.Errorf("registering skill content: %w", err)
 		}
 	}
+	if len(s.Def.Config.Fields) > 0 {
+		reg.RegisterConfigSchema(s.Def.Name, s.Def.Config)
+	}
 	return nil
+}
+
+// Unconfigured creates a metadata-only skill that registers its schema and
+// content but no active tools. This allows chonkbase to discover the skill
+// and show its config UI even when required credentials haven't been provided.
+//
+// Use this in Register() as a fallback when New() fails due to missing config.
+func Unconfigured(def Definition) *Skill {
+	return &Skill{
+		Def:        def,
+		Handlers:   make(map[string]Handler),
+		Configured: false,
+	}
 }
 
 // AddTool registers a tool with typed arguments. The JSON schema is generated

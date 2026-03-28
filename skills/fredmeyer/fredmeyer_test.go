@@ -160,3 +160,6 @@ func (r *testMCPRegistry) RegisterTool(def skill.ToolDef, handler skill.Handler)
 func (r *testMCPRegistry) RegisterSkill(name, description, content string, tags []string) error {
 	return nil
 }
+
+func (r *testMCPRegistry) RegisterConfigSchema(skillName string, schema skill.ConfigSchema) {
+}
