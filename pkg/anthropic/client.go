@@ -20,11 +20,11 @@ import (
 
 const (
 	// DefaultWriter is the default model for creative generation tasks.
-	DefaultWriter = "claude-sonnet-4-6"
+	DefaultWriter = "claude-sonnet"
 	// DefaultJudge is the default model for evaluation tasks.
-	DefaultJudge = "claude-opus-4-6"
+	DefaultJudge = "claude-opus"
 	// DefaultReview is the default model for deep manuscript review.
-	DefaultReview = "claude-opus-4-6"
+	DefaultReview = "claude-opus"
 )
 
 // Client talks to an LLM via the Anthropic Messages API format.
