@@ -146,17 +146,13 @@ Keep it to 2-3 sentences.`, truncate(text, 4000), spec.Grade+5, spec.Grade+8)
 				return "", fmt.Errorf("generation failed: %w", err)
 			}
 
-			if result.ImageURL == "" {
-				return "", fmt.Errorf("no image URL in response")
-			}
-
-			bytes, err := imagegen.DownloadImage(result.ImageURL, destPath)
+			nbytes, err := imagegen.SaveResult(result, destPath)
 			if err != nil {
-				return "", fmt.Errorf("download failed: %w", err)
+				return "", fmt.Errorf("saving image failed: %w", err)
 			}
 
 			return fmt.Sprintf("Illustration generated: %s (%d bytes)\nStyle: %s\nPrompt: %s",
-				filepath.Base(destPath), bytes, style, artPrompt), nil
+				filepath.Base(destPath), nbytes, style, artPrompt), nil
 		})
 
 	skill.AddTool(s, "run_pipeline",

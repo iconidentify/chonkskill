@@ -109,7 +109,7 @@ Return a JSON object:
 				return "", fmt.Errorf("generation failed: %w", err)
 			}
 
-			// Download the image.
+			// Save the image.
 			var destPath string
 			switch args.ArtType {
 			case "cover":
@@ -122,13 +122,13 @@ Return a JSON object:
 				destPath = filepath.Join(p.Dir, "art/scene_break.png")
 			}
 
-			bytes, err := imagegen.DownloadImage(result.ImageURL, destPath)
+			nbytes, err := imagegen.SaveResult(result, destPath)
 			if err != nil {
-				return "", fmt.Errorf("download failed: %w", err)
+				return "", fmt.Errorf("saving image failed: %w", err)
 			}
 
-			return fmt.Sprintf("Art generated: %s (%d bytes)\nPrompt: %s\nURL: %s",
-				filepath.Base(destPath), bytes, prompt, result.ImageURL), nil
+			return fmt.Sprintf("Art generated: %s (%d bytes)\nPrompt: %s",
+				filepath.Base(destPath), nbytes, prompt), nil
 		})
 }
 

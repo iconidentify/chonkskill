@@ -7,6 +7,7 @@ package imagegen
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -51,9 +52,11 @@ type GenerateParams struct {
 	N      int    // Number of images, default 1
 }
 
-// GenerateResult holds the generated image URL.
+// GenerateResult holds the generated image. Either ImageURL is set (DALL-E style)
+// or ImageData contains raw PNG bytes (Imagen/Gemini style b64_json response).
 type GenerateResult struct {
-	ImageURL string `json:"image_url"`
+	ImageURL  string `json:"image_url,omitempty"`
+	ImageData []byte `json:"-"` // Decoded from b64_json if no URL
 }
 
 // Generate creates an image from a text prompt.
@@ -111,24 +114,59 @@ func (c *Client) Generate(params GenerateParams) (*GenerateResult, error) {
 		return nil, fmt.Errorf("parsing response: %w", err)
 	}
 
-	result := &GenerateResult{}
-	if len(apiResp.Data) > 0 {
-		result.ImageURL = apiResp.Data[0].URL
+	if len(apiResp.Data) == 0 {
+		return nil, fmt.Errorf("no image data in response")
 	}
 
-	if result.ImageURL == "" {
-		return nil, fmt.Errorf("no image URL in response")
+	result := &GenerateResult{}
+	item := apiResp.Data[0]
+
+	if item.URL != "" {
+		result.ImageURL = item.URL
+	} else if item.B64JSON != "" {
+		decoded, err := base64.StdEncoding.DecodeString(item.B64JSON)
+		if err != nil {
+			return nil, fmt.Errorf("decoding base64 image: %w", err)
+		}
+		result.ImageData = decoded
+	} else {
+		return nil, fmt.Errorf("response contains neither url nor b64_json")
 	}
 
 	return result, nil
 }
 
-// DownloadImage downloads an image from a URL to a local file.
-func DownloadImage(url, destPath string) (int64, error) {
+// SaveResult writes a GenerateResult to disk. Handles both URL-based (downloads)
+// and base64-based (writes bytes directly) responses.
+func SaveResult(result *GenerateResult, destPath string) (int64, error) {
 	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 		return 0, err
 	}
 
+	if len(result.ImageData) > 0 {
+		if err := os.WriteFile(destPath, result.ImageData, 0o644); err != nil {
+			return 0, fmt.Errorf("writing image: %w", err)
+		}
+		return int64(len(result.ImageData)), nil
+	}
+
+	if result.ImageURL != "" {
+		return downloadURL(result.ImageURL, destPath)
+	}
+
+	return 0, fmt.Errorf("result has neither image data nor URL")
+}
+
+// DownloadImage downloads an image from a URL to a local file.
+// Prefer SaveResult which handles both URL and base64 responses.
+func DownloadImage(url, destPath string) (int64, error) {
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return 0, err
+	}
+	return downloadURL(url, destPath)
+}
+
+func downloadURL(url, destPath string) (int64, error) {
 	client := &http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
