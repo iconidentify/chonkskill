@@ -14,7 +14,9 @@ import (
 	"testing"
 
 	"github.com/iconidentify/chonkskill/pkg/skill"
+	"github.com/iconidentify/chonkskill/skills/autonovel"
 	"github.com/iconidentify/chonkskill/skills/drakekb"
+	"github.com/iconidentify/chonkskill/skills/kidsnovel"
 	"github.com/iconidentify/chonkskill/skills/fredmeyer"
 	"github.com/iconidentify/chonkskill/skills/skillcreator"
 	"github.com/iconidentify/chonkskill/skills/xsearch"
@@ -54,6 +56,20 @@ var allSkills = []skillEntry{
 				return err
 			}
 			return s.Register(reg)
+		},
+	},
+	{
+		name: "autonovel",
+		def:  autonovel.Def,
+		register: func(reg skill.Registry) error {
+			return autonovel.Register(reg, autonovel.Config{})
+		},
+	},
+	{
+		name: "kidsnovel",
+		def:  kidsnovel.Def,
+		register: func(reg skill.Registry) error {
+			return kidsnovel.Register(reg, kidsnovel.Config{})
 		},
 	},
 	{

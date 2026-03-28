@@ -9,7 +9,9 @@ import (
 
 	"github.com/iconidentify/chonkskill/pkg/mcprunner"
 	"github.com/iconidentify/chonkskill/pkg/skill"
+	"github.com/iconidentify/chonkskill/skills/autonovel"
 	"github.com/iconidentify/chonkskill/skills/drakekb"
+	"github.com/iconidentify/chonkskill/skills/kidsnovel"
 	"github.com/iconidentify/chonkskill/skills/fredmeyer"
 	"github.com/iconidentify/chonkskill/skills/xsearch"
 	"github.com/joho/godotenv"
@@ -26,6 +28,12 @@ var catalog = map[string]func() (*skill.Skill, error){
 	},
 	"xsearch": func() (*skill.Skill, error) {
 		return xsearch.New(xsearch.ConfigFromEnv())
+	},
+	"autonovel": func() (*skill.Skill, error) {
+		return autonovel.New(autonovel.ConfigFromEnv())
+	},
+	"kidsnovel": func() (*skill.Skill, error) {
+		return kidsnovel.New(kidsnovel.ConfigFromEnv())
 	},
 }
 
