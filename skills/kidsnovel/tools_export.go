@@ -10,6 +10,7 @@ import (
 	"github.com/iconidentify/chonkskill/pkg/imagegen"
 	"github.com/iconidentify/chonkskill/pkg/project"
 	"github.com/iconidentify/chonkskill/pkg/skill"
+	"github.com/iconidentify/chonkskill/pkg/typeset"
 	"github.com/iconidentify/chonkskill/skills/kidsnovel/internal/readability"
 )
 
@@ -153,6 +154,60 @@ Keep it to 2-3 sentences.`, truncate(text, 4000), spec.Grade+5, spec.Grade+8)
 
 			return fmt.Sprintf("Illustration generated: %s (%d bytes)\nStyle: %s\nPrompt: %s",
 				filepath.Base(destPath), nbytes, style, artPrompt), nil
+		})
+
+	skill.AddTool(s, "prepare_pdf",
+		"Prepare LaTeX files for professional kids book PDF. Grade-appropriate typography (larger font for younger readers, optional drop caps). The agent must then run tectonic on the sandbox.",
+		func(ctx context.Context, args PreparePDFArgs) (string, error) {
+			p := project.New(args.ProjectDir)
+			grade := loadGrade(p)
+			title := extractBookTitle(p)
+			author := args.Author
+			if author == "" {
+				if coAuthor, _ := p.LoadFile("co_author.txt"); coAuthor != "" {
+					author = strings.TrimSpace(coAuthor)
+				} else {
+					author = "Author"
+				}
+			}
+
+			opts := typeset.Options{
+				Title:    title,
+				Author:   author,
+				Grade:    grade,
+				DropCaps: grade >= 5,
+				KidsBook: true,
+			}
+			if err := typeset.PreparePDF(args.ProjectDir, opts); err != nil {
+				return "", err
+			}
+
+			cmd := typeset.PDFCommand(args.ProjectDir, true)
+			return fmt.Sprintf("PDF files prepared for %s in typeset/.\n\nRun this command to compile:\n\n```\n%s\n```\n\nOutput: typeset/kidsbook.pdf",
+				readability.GradeSpecs[grade].Label, cmd), nil
+		})
+
+	skill.AddTool(s, "prepare_epub",
+		"Prepare metadata and CSS for kids book EPUB via pandoc. The agent must then run the pandoc command on the sandbox.",
+		func(ctx context.Context, args PrepareEPUBArgs) (string, error) {
+			p := project.New(args.ProjectDir)
+			title := extractBookTitle(p)
+			author := args.Author
+			if author == "" {
+				if coAuthor, _ := p.LoadFile("co_author.txt"); coAuthor != "" {
+					author = strings.TrimSpace(coAuthor)
+				} else {
+					author = "Author"
+				}
+			}
+
+			opts := typeset.Options{Title: title, Author: author}
+			if err := typeset.PrepareEPUB(args.ProjectDir, opts); err != nil {
+				return "", err
+			}
+
+			cmd := typeset.EPUBCommand(args.ProjectDir)
+			return fmt.Sprintf("EPUB files prepared in typeset/.\n\nRun this command to compile:\n\n```\n%s\n```\n\nOutput: book.epub", cmd), nil
 		})
 
 	skill.AddTool(s, "run_pipeline",
@@ -352,4 +407,18 @@ Return the complete simplified chapter.`, spec.Label, spec.FKMin, spec.FKMax, te
 	if err == nil {
 		p.SaveChapter(ch, resp.Text)
 	}
+}
+
+func extractBookTitle(p *project.Project) string {
+	outline, _ := p.Outline()
+	if outline != "" {
+		lines := strings.SplitN(outline, "\n", 2)
+		if len(lines) > 0 {
+			t := strings.TrimSpace(strings.TrimLeft(lines[0], "#"))
+			if t != "" {
+				return t
+			}
+		}
+	}
+	return "Untitled Book"
 }

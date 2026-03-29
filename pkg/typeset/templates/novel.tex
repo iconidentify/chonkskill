@@ -1,0 +1,170 @@
+% Professional novel template for trade paperback (5.5" x 8.5")
+% Based on NousResearch/autonovel typesetting
+% Compile with: tectonic novel.tex
+\documentclass[11pt, openany]{book}
+
+% --- Page geometry: trade paperback ---
+\usepackage[
+  paperwidth=5.5in,
+  paperheight=8.5in,
+  inner=0.85in,
+  outer=0.65in,
+  top=0.8in,
+  bottom=0.9in
+]{geometry}
+
+% --- Fonts ---
+\usepackage{fontspec}
+\setmainfont{EB Garamond}[
+  BoldFont={EB Garamond Bold},
+  ItalicFont={EB Garamond Italic},
+  BoldItalicFont={EB Garamond Bold Italic},
+  Numbers=OldStyle
+]
+% Fallback if EB Garamond not available
+% \setmainfont{DejaVu Serif}
+
+% --- Typography ---
+\usepackage{microtype}
+\usepackage{setspace}
+\setstretch{1.12}
+
+% --- Drop caps ---
+\usepackage{lettrine}
+
+% --- Chapter headings ---
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\large\centering}
+  {\MakeUppercase{\chaptertitlename}\ \thechapter}
+  {0.5em}
+  {\itshape\LARGE}
+\titlespacing*{\chapter}{0pt}{30pt}{20pt}
+
+% --- Running headers ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\small\scshape {{TITLE}}}
+\fancyhead[RO]{\small\itshape\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+
+% Plain style for chapter opening pages
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% --- Scene break ---
+\newcommand{\scenebreak}{%
+  \par\vspace{1.5em}%
+  \begin{center}*\quad*\quad*\end{center}%
+  \vspace{1.0em}\par\noindent%
+}
+
+% --- Chapter art (ornament after heading) ---
+\newcommand{\chapterart}[1]{%
+  \begin{center}%
+    \vspace{0.5em}%
+    \includegraphics[width=2cm]{#1}%
+    \vspace{0.5em}%
+  \end{center}%
+}
+
+% --- Chapter illustration (full width) ---
+\newcommand{\chapterillustration}[1]{%
+  \begin{center}%
+    \vspace{1em}%
+    \includegraphics[width=0.85\textwidth]{#1}%
+    \vspace{1em}%
+  \end{center}%
+}
+
+% --- Graphics ---
+\usepackage{graphicx}
+\graphicspath{{./}{./art/}}
+
+% --- PDF metadata ---
+\usepackage[
+  pdfauthor={{{AUTHOR}}},
+  pdftitle={{{TITLE}}},
+  hidelinks
+]{hyperref}
+
+% --- No paragraph indent, use skip instead for cleaner look ---
+% Actually, traditional novels use indent. Keep indent.
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0pt}
+
+\begin{document}
+
+% --- Front matter ---
+\frontmatter
+\pagestyle{empty}
+
+% Cover page
+\IfFileExists{art/cover.png}{%
+  \newgeometry{margin=0pt}
+  \begin{center}
+    \vspace*{\fill}
+    \includegraphics[width=\paperwidth, height=\paperheight, keepaspectratio]{art/cover.png}
+    \vspace*{\fill}
+  \end{center}
+  \restoregeometry
+  \clearpage
+}{}
+
+% Half title
+\vspace*{3in}
+\begin{center}
+  {\Large\itshape {{TITLE}}}
+\end{center}
+\clearpage
+
+% Blank
+\mbox{}
+\clearpage
+
+% Title page
+\vspace*{2in}
+\begin{center}
+  {\Huge {{TITLE}}}\\[1em]
+  \rule{2in}{0.4pt}\\[1.5em]
+  {\Large {{AUTHOR}}}
+\end{center}
+\clearpage
+
+% Copyright
+\vspace*{\fill}
+\begin{center}
+  \small
+  Copyright \textcopyright\ {{AUTHOR}}\\[0.5em]
+  All rights reserved.\\[1em]
+  This is a work of fiction. Names, characters, places, and incidents\\
+  are products of the author's imagination or are used fictitiously.
+\end{center}
+\clearpage
+
+% Table of contents
+\pagestyle{fancy}
+\tableofcontents
+\clearpage
+
+% --- Main matter ---
+\mainmatter
+
+\input{chapters_content.tex}
+
+% --- Back matter ---
+\backmatter
+\pagestyle{empty}
+\clearpage
+\vspace*{3in}
+\begin{center}
+  \textit{The End}
+\end{center}
+
+\end{document}

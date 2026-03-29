@@ -1,0 +1,149 @@
+% Children's chapter book template for trade paperback (5.5" x 8.5")
+% Grade-appropriate typography and layout
+% Compile with: tectonic kidsbook.tex
+\documentclass[{{FONTSIZE}}, openany]{book}
+
+% --- Page geometry: trade paperback with wider margins for kids ---
+\usepackage[
+  paperwidth=5.5in,
+  paperheight=8.5in,
+  inner=0.9in,
+  outer=0.75in,
+  top=0.85in,
+  bottom=0.95in
+]{geometry}
+
+% --- Fonts ---
+\usepackage{fontspec}
+\setmainfont{EB Garamond}[
+  BoldFont={EB Garamond Bold},
+  ItalicFont={EB Garamond Italic},
+  BoldItalicFont={EB Garamond Bold Italic}
+]
+
+% --- Typography ---
+\usepackage{microtype}
+\usepackage{setspace}
+\setstretch{1.2}
+
+% --- Drop caps (only for upper grades) ---
+\usepackage{lettrine}
+
+% --- Chapter headings: friendly, not formal ---
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\Large\bfseries\centering}
+  {Chapter \thechapter}
+  {0.3em}
+  {\LARGE}
+\titlespacing*{\chapter}{0pt}{20pt}{15pt}
+
+% --- Headers: simpler for kids ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+% Plain style for chapter opening pages
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% --- Scene break ---
+\newcommand{\scenebreak}{%
+  \par\vspace{1.2em}%
+  \begin{center}\textbullet\quad\textbullet\quad\textbullet\end{center}%
+  \vspace{0.8em}\par\noindent%
+}
+
+% --- Chapter illustration (large, centered) ---
+\newcommand{\chapterillustration}[1]{%
+  \begin{center}%
+    \vspace{1em}%
+    \includegraphics[width=0.9\textwidth]{#1}%
+    \vspace{1em}%
+  \end{center}%
+}
+
+% --- Chapter art (small ornament) ---
+\newcommand{\chapterart}[1]{%
+  \begin{center}%
+    \vspace{0.5em}%
+    \includegraphics[width=2.5cm]{#1}%
+    \vspace{0.5em}%
+  \end{center}%
+}
+
+% --- Graphics ---
+\usepackage{graphicx}
+\graphicspath{{./}{./art/}}
+
+% --- PDF metadata ---
+\usepackage[
+  pdfauthor={{{AUTHOR}}},
+  pdftitle={{{TITLE}}},
+  hidelinks
+]{hyperref}
+
+% --- Paragraph formatting ---
+\setlength{\parindent}{1.2em}
+\setlength{\parskip}{0.3em}
+
+\begin{document}
+
+% --- Front matter ---
+\frontmatter
+\pagestyle{empty}
+
+% Cover page
+\IfFileExists{art/cover.png}{%
+  \newgeometry{margin=0pt}
+  \begin{center}
+    \vspace*{\fill}
+    \includegraphics[width=\paperwidth, height=\paperheight, keepaspectratio]{art/cover.png}
+    \vspace*{\fill}
+  \end{center}
+  \restoregeometry
+  \clearpage
+}{}
+
+% Title page
+\vspace*{2in}
+\begin{center}
+  {\Huge\bfseries {{TITLE}}}\\[1.5em]
+  {\Large {{AUTHOR}}}
+\end{center}
+\clearpage
+
+% Copyright
+\vspace*{\fill}
+\begin{center}
+  \small
+  Copyright \textcopyright\ {{AUTHOR}}\\[0.5em]
+  All rights reserved.
+\end{center}
+\clearpage
+
+% Table of contents
+\pagestyle{fancy}
+\tableofcontents
+\clearpage
+
+% --- Main matter ---
+\mainmatter
+
+\input{chapters_content.tex}
+
+% --- Back matter ---
+\backmatter
+\pagestyle{empty}
+\clearpage
+\vspace*{3in}
+\begin{center}
+  {\Large\itshape The End}
+\end{center}
+
+\end{document}

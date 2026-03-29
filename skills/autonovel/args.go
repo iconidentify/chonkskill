@@ -129,6 +129,18 @@ type BuildOutlineArgs struct {
 	ProjectDir string `json:"project_dir" jsonschema:"Path to the novel project directory"`
 }
 
+// --- Typesetting ---
+
+type PreparePDFArgs struct {
+	ProjectDir string `json:"project_dir" jsonschema:"Path to the novel project directory"`
+	Author     string `json:"author,omitempty" jsonschema:"Author name for title page"`
+}
+
+type PrepareEPUBArgs struct {
+	ProjectDir string `json:"project_dir" jsonschema:"Path to the novel project directory"`
+	Author     string `json:"author,omitempty" jsonschema:"Author name for metadata"`
+}
+
 // --- Art ---
 
 type GenArtStyleArgs struct {

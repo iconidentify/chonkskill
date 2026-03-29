@@ -97,6 +97,16 @@ type BuildBookArgs struct {
 	ProjectDir string `json:"project_dir" jsonschema:"Path to the book project directory"`
 }
 
+type PreparePDFArgs struct {
+	ProjectDir string `json:"project_dir" jsonschema:"Path to the book project directory"`
+	Author     string `json:"author,omitempty" jsonschema:"Author name for title page"`
+}
+
+type PrepareEPUBArgs struct {
+	ProjectDir string `json:"project_dir" jsonschema:"Path to the book project directory"`
+	Author     string `json:"author,omitempty" jsonschema:"Author name for metadata"`
+}
+
 type GenIllustrationArgs struct {
 	ProjectDir string `json:"project_dir" jsonschema:"Path to the book project directory"`
 	Chapter    int    `json:"chapter,omitempty" jsonschema:"Chapter number (for chapter illustration). Omit for cover."`

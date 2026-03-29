@@ -6,9 +6,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/iconidentify/chonkskill/pkg/skill"
 	"github.com/iconidentify/chonkskill/pkg/anthropic"
 	"github.com/iconidentify/chonkskill/pkg/project"
+	"github.com/iconidentify/chonkskill/pkg/skill"
+	"github.com/iconidentify/chonkskill/pkg/typeset"
 )
 
 func registerExportTools(s *skill.Skill, rt *runtime) {
@@ -32,6 +33,48 @@ func registerExportTools(s *skill.Skill, rt *runtime) {
 			}
 			outline, _ := p.Outline()
 			return fmt.Sprintf("outline.md rebuilt (%d words)", anthropic.CountWords(outline)), nil
+		})
+
+	skill.AddTool(s, "prepare_pdf",
+		"Prepare all LaTeX files for professional PDF generation. Converts chapters to LaTeX with drop caps, scene breaks, and ornaments. Writes typeset/novel.tex and typeset/chapters_content.tex. The agent must then run the tectonic command on the sandbox.",
+		func(ctx context.Context, args PreparePDFArgs) (string, error) {
+			p := project.New(args.ProjectDir)
+			title := extractTitle(p)
+			author := args.Author
+			if author == "" {
+				author = "Author"
+			}
+
+			opts := typeset.Options{
+				Title:    title,
+				Author:   author,
+				DropCaps: true,
+			}
+			if err := typeset.PreparePDF(args.ProjectDir, opts); err != nil {
+				return "", err
+			}
+
+			cmd := typeset.PDFCommand(args.ProjectDir, false)
+			return fmt.Sprintf("PDF files prepared in typeset/.\n\nRun this command to compile:\n\n```\n%s\n```\n\nOutput: typeset/novel.pdf", cmd), nil
+		})
+
+	skill.AddTool(s, "prepare_epub",
+		"Prepare metadata and CSS files for EPUB generation via pandoc. Writes typeset/epub_metadata.yaml and typeset/epub_style.css. The agent must then run the pandoc command on the sandbox.",
+		func(ctx context.Context, args PrepareEPUBArgs) (string, error) {
+			p := project.New(args.ProjectDir)
+			title := extractTitle(p)
+			author := args.Author
+			if author == "" {
+				author = "Author"
+			}
+
+			opts := typeset.Options{Title: title, Author: author}
+			if err := typeset.PrepareEPUB(args.ProjectDir, opts); err != nil {
+				return "", err
+			}
+
+			cmd := typeset.EPUBCommand(args.ProjectDir)
+			return fmt.Sprintf("EPUB files prepared in typeset/.\n\nRun this command to compile:\n\n```\n%s\n```\n\nOutput: book.epub", cmd), nil
 		})
 }
 

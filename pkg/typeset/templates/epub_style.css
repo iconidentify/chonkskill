@@ -1,0 +1,71 @@
+/* EPUB stylesheet for novel/kids book output */
+/* Based on NousResearch/autonovel epub_style.css */
+
+body {
+  font-family: Georgia, "Palatino Linotype", Palatino, serif;
+  line-height: 1.5;
+  margin: 1em;
+}
+
+h1 {
+  text-align: center;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  page-break-before: always;
+}
+
+h2 {
+  text-align: center;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+p {
+  text-indent: 1.5em;
+  margin: 0;
+}
+
+/* No indent on first paragraph after headings or scene breaks */
+p:first-of-type,
+hr + p,
+h1 + p,
+h2 + p,
+h3 + p {
+  text-indent: 0;
+}
+
+/* Scene breaks */
+hr {
+  border: none;
+  text-align: center;
+  margin: 1.5em 0;
+}
+
+hr::after {
+  content: "\2022\2003\2022\2003\2022";
+  letter-spacing: 0.5em;
+  color: #666;
+}
+
+/* Emphasis */
+em {
+  font-style: italic;
+}
+
+strong {
+  font-weight: bold;
+}
+
+/* Images */
+img {
+  max-width: 90%;
+  margin: 1em auto;
+  display: block;
+}
+
+/* Blockquotes (epigraphs) */
+blockquote {
+  font-style: italic;
+  margin: 1.5em 2em;
+  color: #444;
+}
